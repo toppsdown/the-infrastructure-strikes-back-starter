@@ -26,9 +26,13 @@ test("no surprise production deps", () => {
   // Event infra: keep the prod dep set tiny so forks stay cheap to
   // deploy. If a new prod dep is needed, the set is small enough that
   // bumping this number is a visible, reviewable change.
+  //
+  // Current allowlist:
+  //   - next, react, react-dom  (framework)
+  //   - @vercel/analytics       (event traffic telemetry)
   const count = Object.keys(pkg.dependencies).length;
   assert.ok(
-    count <= 3,
-    `expected <=3 prod deps, found ${count}: ${Object.keys(pkg.dependencies).join(", ")}`,
+    count <= 4,
+    `expected <=4 prod deps, found ${count}: ${Object.keys(pkg.dependencies).join(", ")}`,
   );
 });

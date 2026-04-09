@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: "The Infrastructure Strikes Back — Starter",
@@ -21,6 +22,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         }}
       >
         {children}
+        {/* Vercel Web Analytics — tracks event traffic (pageviews, referrers).
+            Opt out per deploy by removing this line or unsetting the project's
+            Analytics toggle in Vercel. */}
+        <Analytics />
       </body>
     </html>
   );
