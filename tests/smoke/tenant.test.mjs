@@ -11,9 +11,10 @@ import { resolve } from "node:path";
 
 const root = resolve(new URL("../../", import.meta.url).pathname);
 
-test(".env.example documents TENANT_ID, ADMIN_TOKEN, SESSION_SECRET", () => {
+test(".env.example documents TENANT_ID, ADMIN_TOKEN, SESSION_SECRET, EVENT_START_ISO", () => {
   const env = readFileSync(resolve(root, ".env.example"), "utf8");
   assert.match(env, /TENANT_ID/);
   assert.match(env, /ADMIN_TOKEN/);
   assert.match(env, /SESSION_SECRET/);
+  assert.match(env, /EVENT_START_ISO/);
 });

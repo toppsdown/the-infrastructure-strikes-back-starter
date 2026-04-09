@@ -23,21 +23,27 @@ score each team's own deployment.
 ```bash
 npm install
 cp .env.example .env.local
+# IMPORTANT: set EVENT_START_ISO to a past time in .env.local for dev,
+# otherwise middleware will serve the gate splash and block the app.
+echo 'EVENT_START_ISO=2000-01-01T00:00:00Z' >> .env.local
 npm run dev
 ```
 
 Then open http://localhost:3000.
 
-To run the happy-path functional suite against your local server:
+To run the happy-path functional suite against your local server (the
+gate must be open, so set `EVENT_START_ISO` in the server's env, not
+the test runner's):
 
 ```bash
 npm run build
-npm start &
+EVENT_START_ISO=2000-01-01T00:00:00Z npm start &
 TEST_BASE_URL=http://localhost:3000 ADMIN_TOKEN=letmein npm run test:functional
 ```
 
 `npm test` (no suffix) runs only the instant structural/deploy-health
-smoke checks — it does **not** boot a server. Use it in CI.
+smoke checks — it does **not** boot a server and is unaffected by the
+gate. Use it in CI.
 
 ## Vercel (recommended)
 
@@ -47,11 +53,12 @@ smoke checks — it does **not** boot a server. Use it in CI.
 4. Set the following environment variables in the Vercel project
    settings:
 
-   | name             | required | value                                        |
-   |------------------|----------|----------------------------------------------|
-   | `TENANT_ID`      | yes      | short stable id, e.g. `team-ravens`          |
-   | `ADMIN_TOKEN`    | yes      | long random string                           |
-   | `SESSION_SECRET` | yes      | long random string (≥ 32 chars)              |
+   | name              | required | value                                                        |
+   |-------------------|----------|--------------------------------------------------------------|
+   | `TENANT_ID`       | yes      | short stable id, e.g. `team-ravens`                          |
+   | `ADMIN_TOKEN`     | yes      | long random string                                           |
+   | `SESSION_SECRET`  | yes      | long random string (≥ 32 chars)                              |
+   | `EVENT_START_ISO` | no       | ISO 8601 gate time; defaults to `2026-04-09T17:55:00-07:00`  |
 
 5. Click **Deploy**. First deploy should finish in under two minutes.
 6. Open the deployed URL. Confirm the landing page shows your
@@ -74,6 +81,15 @@ the landing page should match on an unhardened fork.
 - If `SESSION_SECRET` is missing, an ephemeral value is generated at
   boot. Sessions will not survive cold starts. For the event you
   **must** set it.
+- `EVENT_START_ISO` gates the entire app behind a time check. Before
+  the gate opens, browsers see a splash page with a countdown and
+  `/api/*` returns `503 {"error":"gate_closed", ...}`. After the gate
+  opens, the real app passes through normally. The default in the
+  middleware is `2026-04-09T17:55:00-07:00` (5 min safety margin before
+  the nominal 18:00 PDT kickoff). To run locally **before** that time,
+  set `EVENT_START_ISO=2000-01-01T00:00:00Z` or any other past
+  timestamp. To test the splash on a deployed instance, leave the env
+  var unset (or set it to a future time) — you should see the gate.
 
 ## Other hosts
 
