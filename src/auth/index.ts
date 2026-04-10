@@ -11,3 +11,4 @@ export {
 } from "./session";
 export type { SessionData } from "./session";
 export { verifyStepupCode, STEPUP_EXPECTED_CODE } from "./stepup";
+export { checkLoginRateLimit, clearLoginRateLimit } from "./rateLimit";

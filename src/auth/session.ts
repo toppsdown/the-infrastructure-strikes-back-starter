@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getSessionSecret } from "@/lib/config";
+import { getStore } from "@/lib/store";
 
 // Signed cookie session. Naive on purpose — no rotation, no expiry
 // enforcement beyond a soft field.
@@ -28,7 +29,18 @@ function fromB64url(s: string): Buffer {
 }
 
 export function signSession(data: SessionData): string {
-  const payload = b64url(JSON.stringify(data));
+  // SEEDED FLAW (fixed): client-influenced session identity.
+  // Callers (notably the login route) previously could stash any
+  // caller-supplied string into `identity`. We now derive `identity`
+  // from the authoritative user record keyed by `userId`, ignoring
+  // whatever the caller passed. If the user is unknown, fall back to
+  // the userId itself rather than trusting caller input.
+  const user = getStore().users.get(data.userId);
+  const safe: SessionData = {
+    ...data,
+    identity: user ? user.username : data.userId,
+  };
+  const payload = b64url(JSON.stringify(safe));
   const mac = b64url(
     createHmac("sha256", getSessionSecret()).update(payload).digest(),
   );

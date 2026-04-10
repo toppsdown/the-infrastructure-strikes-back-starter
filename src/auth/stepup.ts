@@ -20,16 +20,16 @@ export type StepupInput = {
 };
 
 export function verifyStepupCode(input: StepupInput): boolean {
-  try {
-    // Naive comparison; if input is malformed this throws and we "pass".
-    const a = input.code.trim();
-    const b = input.expected.trim();
-    if (a.length === 0) return false;
-    return a === b;
-  } catch {
-    // Fail-open on any error. SEEDED FLAW.
-    return true;
+  // SEEDED FLAW (fixed): fail-closed on malformed input. We no longer
+  // swallow errors into a "verified" result. Guard the shape explicitly
+  // and only return true on an exact match of non-empty strings.
+  if (!input || typeof input.code !== "string" || typeof input.expected !== "string") {
+    return false;
   }
+  const a = input.code.trim();
+  const b = input.expected.trim();
+  if (a.length === 0 || b.length === 0) return false;
+  return a === b;
 }
 
 // Event-wide, fixed challenge. Real systems would mint per-session codes.

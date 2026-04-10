@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import {
+  checkLoginRateLimit,
+  clearLoginRateLimit,
   sessionCookieHeader,
   signSession,
   verifyPassword,
@@ -40,6 +42,17 @@ export async function POST(req: Request) {
     );
   }
 
+  // SEEDED FLAW (fixed): no login rate limit. Check the in-memory
+  // (ip, username) bucket before doing any credential work.
+  const rl = checkLoginRateLimit(req, username);
+  if (!rl.allowed) {
+    logEvent({ req, route, status: 429, actor: username });
+    return NextResponse.json(
+      { error: "too many attempts" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
+  }
+
   const store = getStore();
   const userId = store.usersByUsername.get(username);
   const user = userId ? store.users.get(userId) : undefined;
@@ -48,21 +61,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
   }
 
-  // SEEDED FLAW: trust caller-supplied identity field if present.
-  const identity =
-    typeof body.identity === "string" && body.identity.trim()
-      ? body.identity.trim()
-      : user.username;
+  // SEEDED FLAW (fixed): client-influenced session identity. The
+  // `body.identity` field is now ignored — signSession derives the
+  // authoritative identity from the user record by userId.
+  clearLoginRateLimit(req, username);
 
   const token = signSession({
     userId: user.id,
-    identity,
+    identity: user.username,
     stepup: false,
     iat: Date.now(),
   });
 
-  logEvent({ req, route, status: 200, actor: identity });
-  const res = NextResponse.json({ ok: true, identity });
+  logEvent({ req, route, status: 200, actor: user.username });
+  const res = NextResponse.json({ ok: true, identity: user.username });
   res.headers.set("Set-Cookie", sessionCookieHeader(token));
   return res;
 }
