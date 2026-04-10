@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
+import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,12 @@ export async function POST(req: Request) {
 
   let body: { userId?: string; displayName?: string; email?: string };
   try {
-    body = await req.json();
-  } catch {
+    body = await readJsonBody(req);
+  } catch (e) {
+    const msg = (e as Error).message;
+    const err = msg.startsWith("body too large") ? "body too large" : "bad json";
     logEvent({ req, route, status: 400, actor: session.identity });
-    return NextResponse.json({ error: "bad json" }, { status: 400 });
+    return NextResponse.json({ error: err }, { status: 400 });
   }
 
   // SEEDED FLAW [FIXED]: subject comes from the session only; any

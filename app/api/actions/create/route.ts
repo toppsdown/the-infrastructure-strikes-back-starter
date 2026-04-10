@@ -4,6 +4,7 @@ import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
 import { badRequest, checkRateLimit, classifyError } from "@/src/api";
+import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const rawBody = (await req.json().catch(() => {
+    const rawBody = (await readJsonBody(req).catch((e: Error) => {
+      if (e.message.startsWith("body too large")) throw badRequest("body too large");
       throw badRequest("invalid JSON body");
     })) as { title?: unknown; body?: unknown };
 

@@ -7,6 +7,7 @@ import {
   signSession,
   verifyStepupCode,
 } from "@/src/auth";
+import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,17 @@ export async function POST(req: Request) {
 
   // Intentionally does NOT guard against missing body / missing code.
   // See stepup.ts: verifyStepupCode fails open on thrown errors.
-  const body = (await req.json().catch(() => ({}))) as { code?: unknown };
+  let body: { code?: unknown };
+  try {
+    body = await readJsonBody<{ code?: unknown }>(req);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.startsWith("body too large")) {
+      logEvent({ req, route, status: 400, actor: session.identity });
+      return NextResponse.json({ error: "body too large" }, { status: 400 });
+    }
+    body = {};
+  }
 
   const ok = verifyStepupCode({
     code: body.code as string,

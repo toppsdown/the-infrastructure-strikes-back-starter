@@ -110,6 +110,7 @@ export async function POST(req: Request) {
       logEvent({ req, route, status: 404, actor: null });
       return NextResponse.json({ error: "user not found" }, { status: 404 });
     }
+    user.pwdVersion = (user.pwdVersion ?? 0) + 1;
     user.passwordHash = hashPassword(newPassword);
     store.resetTokens.delete(token);
     logEvent({ req, route, status: 200, actor: user.username });

@@ -4,6 +4,9 @@ import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
 import { checkSignupRateLimit } from "@/src/identity";
+import { readJsonBody } from "@/src/shared/readBody";
+
+const USERNAME_RE = /^[a-zA-Z0-9_\-.]{3,64}$/;
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +45,12 @@ export async function POST(req: Request) {
     displayName?: string;
   };
   try {
-    body = await req.json();
-  } catch {
+    body = await readJsonBody(req);
+  } catch (e) {
+    const msg = (e as Error).message;
+    const err = msg.startsWith("body too large") ? "body too large" : "bad json";
     logEvent({ req, route, status: 400, actor: null });
-    return NextResponse.json({ error: "bad json" }, { status: 400 });
+    return NextResponse.json({ error: err }, { status: 400 });
   }
 
   const username = (body.username || "").trim();
@@ -57,9 +62,9 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (username.length > 64) {
+  if (!USERNAME_RE.test(username)) {
     logEvent({ req, route, status: 400, actor: null });
-    return NextResponse.json({ error: "username too long" }, { status: 400 });
+    return NextResponse.json({ error: "invalid username" }, { status: 400 });
   }
   if (password.length > 256) {
     logEvent({ req, route, status: 400, actor: null });

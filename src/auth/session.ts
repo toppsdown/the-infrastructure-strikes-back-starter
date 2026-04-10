@@ -18,6 +18,8 @@ export type SessionData = {
   stepup: boolean;
   // Issued-at timestamp (ms).
   iat: number;
+  // Password version at time of signing; invalidated on password reset.
+  pwdVersion: number;
 };
 
 function b64url(input: Buffer | string): string {
@@ -65,6 +67,10 @@ export function verifySession(token: string | undefined | null): SessionData | n
     if (typeof parsed.userId !== "string") return null;
     if (typeof parsed.iat !== "number") return null;
     if (Date.now() - parsed.iat > MAX_SESSION_AGE_MS) return null;
+    if (typeof parsed.pwdVersion !== "number") return null;
+    const user = getStore().users.get(parsed.userId);
+    if (!user) return null;
+    if ((user.pwdVersion ?? 0) !== parsed.pwdVersion) return null;
     return parsed;
   } catch {
     return null;

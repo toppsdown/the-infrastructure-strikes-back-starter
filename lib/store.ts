@@ -10,6 +10,7 @@ export type User = {
   email: string;
   displayName: string;
   createdAt: string;
+  pwdVersion?: number;
 };
 
 export type ActionObject = {
