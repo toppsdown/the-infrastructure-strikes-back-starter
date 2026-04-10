@@ -36,10 +36,3 @@ export function checkLoginRateLimit(req: Request, username: string): RateLimitRe
   }
   return { allowed: true, retryAfterMs: 0 };
 }
-
-// Reset the bucket on successful login so honest users aren't punished
-// for a few typos before getting it right.
-export function clearLoginRateLimit(req: Request, username: string): void {
-  const key = `${clientIp(req)}|${username.toLowerCase()}`;
-  buckets.delete(key);
-}

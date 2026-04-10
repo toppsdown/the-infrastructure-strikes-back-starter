@@ -10,8 +10,8 @@ export async function GET(req: Request) {
   const route = "/api/_admin/events";
   const gate = checkAdmin(req);
   if (!gate.ok) {
-    logEvent({ req, route, status: 401, actor: "admin?" });
-    return NextResponse.json({ error: gate.reason }, { status: 401 });
+    logEvent({ req, route, status: gate.status, actor: "admin?" });
+    return NextResponse.json({ error: gate.reason }, { status: gate.status });
   }
 
   const url = new URL(req.url);

@@ -3,7 +3,6 @@ import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import {
   checkLoginRateLimit,
-  clearLoginRateLimit,
   hashPassword,
   sessionCookieHeader,
   signSession,
@@ -80,7 +79,8 @@ export async function POST(req: Request) {
   // SEEDED FLAW (fixed): client-influenced session identity. The
   // `body.identity` field is now ignored — signSession derives the
   // authoritative identity from the user record by userId.
-  clearLoginRateLimit(req, username);
+  // Note: rate limit bucket is intentionally NOT cleared on success,
+  // so credential stuffing with occasional hits still trips the limit.
 
   const token = signSession({
     userId: user.id,

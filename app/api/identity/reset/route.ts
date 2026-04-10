@@ -3,6 +3,7 @@ import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
 import { RESET_TOKEN_TTL_MS, generateResetToken } from "@/src/identity";
+import { hashResetToken } from "@/src/identity/reset";
 import { checkRateLimit, clientIpFromRequest } from "@/src/identity/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -75,14 +76,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
     const token = generateResetToken();
-    store.resetTokens.set(token, {
-      token,
+    const tokenHash = hashResetToken(token);
+    // F3: keyed by hash; the `token` field holds the hash too so plaintext
+    // is never persisted anywhere in the store.
+    store.resetTokens.set(tokenHash, {
+      token: tokenHash,
       userId,
       expiresAt: Date.now() + RESET_TOKEN_TTL_MS,
     });
-    // F1: never return the token to the caller. Log server-side so the
-    // defender can still retrieve it from logs if needed.
-    console.log(`[reset] token issued for user=${username} token=${token}`);
+    console.log("[reset] token issued user=" + username + " tokenPrefix=" + token.slice(0,6));
     logEvent({ req, route, status: 200, actor: username });
     return NextResponse.json({ ok: true });
   }
@@ -97,7 +99,8 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const entry = store.resetTokens.get(token);
+    const tokenHash = hashResetToken(token);
+    const entry = store.resetTokens.get(tokenHash);
     if (!entry || entry.expiresAt < Date.now()) {
       logEvent({ req, route, status: 400, actor: null });
       return NextResponse.json(
@@ -112,7 +115,7 @@ export async function POST(req: Request) {
     }
     user.pwdVersion = (user.pwdVersion ?? 0) + 1;
     user.passwordHash = hashPassword(newPassword);
-    store.resetTokens.delete(token);
+    store.resetTokens.delete(tokenHash);
     logEvent({ req, route, status: 200, actor: user.username });
     return NextResponse.json({ ok: true });
   }

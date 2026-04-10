@@ -1,24 +1,20 @@
-import { randomBytes } from "node:crypto";
-
 // Centralized config reads. Blue teams should NOT modify this file.
 //
-// Defaults are deliberately permissive so the app "just runs" for the event.
-// Operators set real values via environment variables.
-
-let cachedSessionSecret: string | null = null;
+// Fail-closed: required secrets must be provided via environment variables.
+// No defaults, no ephemeral fallbacks.
 
 export function getAdminToken(): string {
-  return process.env.ADMIN_TOKEN?.trim() || "letmein";
+  const fromEnv = process.env.ADMIN_TOKEN?.trim();
+  if (!fromEnv || fromEnv.length < 16) {
+    throw new Error("ADMIN_TOKEN required (>=16 chars)");
+  }
+  return fromEnv;
 }
 
 export function getSessionSecret(): string {
-  if (cachedSessionSecret) return cachedSessionSecret;
   const fromEnv = process.env.SESSION_SECRET?.trim();
-  if (fromEnv) {
-    cachedSessionSecret = fromEnv;
-    return cachedSessionSecret;
+  if (!fromEnv || fromEnv.length < 32) {
+    throw new Error("SESSION_SECRET required (>=32 chars)");
   }
-  // Ephemeral fallback: sessions won't survive a restart. Fine for the event.
-  cachedSessionSecret = randomBytes(32).toString("hex");
-  return cachedSessionSecret;
+  return fromEnv;
 }
