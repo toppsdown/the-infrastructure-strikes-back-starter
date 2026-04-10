@@ -141,6 +141,11 @@ const SEED_BANS: string[] = [
   "attacker-auth-th",
   "a2authth",
   "foo.bar",
+  "th9a1775791501",
+  "th9v1775791501",
+  "atk3-th",
+  "badge_1775791517_towe",
+  "dupt1-th",
 ];
 for (const id of SEED_BANS) {
   addBan(id, "pre-seeded red team account", -1); // permanent
