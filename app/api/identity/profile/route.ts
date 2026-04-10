@@ -32,15 +32,11 @@ export async function GET(req: Request) {
 // POST /api/identity/profile
 // Body: { userId?: string, displayName?: string, email?: string }
 //
-// SEEDED FLAW: "Profile update lacks proper subject verification".
-// The handler requires *some* valid session, then updates whichever
-// user id is named in the request body. If body.userId is absent it
-// falls back to the session's user id — so the happy path looks fine.
-// But any authenticated caller can mutate any profile by naming a
-// different userId.
-//
-// Blue teams: the fix is to ignore body.userId entirely and always
-// derive the subject from the session.
+// SEEDED FLAW: "Profile update lacks proper subject verification". [FIXED]
+// The subject is now derived exclusively from the authenticated
+// session. Any userId / id field supplied in the request body is
+// ignored. This prevents an authenticated caller from mutating
+// another user's profile by naming a different userId.
 export async function POST(req: Request) {
   const route = "/api/identity/profile";
   const session = sessionFromRequest(req);
@@ -57,8 +53,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
 
-  // SEEDED FLAW: body.userId wins over session.userId.
-  const targetUserId = body.userId || session.userId;
+  // SEEDED FLAW [FIXED]: subject comes from the session only; any
+  // body.userId is intentionally ignored.
+  void body.userId;
+  const targetUserId = session.userId;
   const user = getStore().users.get(targetUserId);
   if (!user) {
     logEvent({ req, route, status: 404, actor: session.identity });

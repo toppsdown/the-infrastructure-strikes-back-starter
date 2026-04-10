@@ -3,19 +3,38 @@ import { randomBytes } from "node:crypto";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
+import { checkSignupRateLimit } from "@/src/identity";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/identity/signup
 // Body: { username: string, password: string, email?: string, displayName?: string }
 //
-// SEEDED FLAW: "Unrestricted signup".
-// No rate limit, no password strength check, no disposable-email
-// detection, no CAPTCHA. The only check is uniqueness of username.
-// A script can create arbitrary accounts. Blue teams should add limits
-// and validation.
+// SEEDED FLAW: "Unrestricted signup". [FIXED]
+// Added a simple per-IP in-memory rate limit (30/min) via
+// src/identity/rateLimit.ts. Generous enough to never block the
+// happy-path probe but sufficient to cut agent-driven signup floods.
+// Password strength / disposable email / CAPTCHA are intentionally out
+// of scope for this minimal patch.
 export async function POST(req: Request) {
   const route = "/api/identity/signup";
+
+  const rl = checkSignupRateLimit(req);
+  if (!rl.allowed) {
+    logEvent({ req, route, status: 429, actor: null });
+    return NextResponse.json(
+      { error: "too many signup attempts" },
+      {
+        status: 429,
+        headers: {
+          "retry-after": Math.max(
+            1,
+            Math.ceil((rl.resetAt - Date.now()) / 1000),
+          ).toString(),
+        },
+      },
+    );
+  }
   let body: {
     username?: string;
     password?: string;
