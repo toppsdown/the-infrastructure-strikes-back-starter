@@ -76,8 +76,18 @@ export async function POST(req: Request) {
 
   const store = getStore();
   if (store.usersByUsername.has(username)) {
-    logEvent({ req, route, status: 409, actor: username });
-    return NextResponse.json({ error: "username taken" }, { status: 409 });
+    // Username-enumeration defense: return a response byte-compatible with the
+    // success path using a synthetic id so an attacker cannot distinguish
+    // "taken" from "newly created". We do NOT return the real user's id —
+    // that would leak the internal identifier.
+    void hashPassword(password); // timing-flat dummy to match success-path cost
+    logEvent({ req, route, status: 200, actor: username });
+    return NextResponse.json({
+      ok: true,
+      id: "usr_" + randomBytes(6).toString("hex"),
+      username,
+      displayName: username,
+    });
   }
 
   const id = "usr_" + randomBytes(6).toString("hex");

@@ -7,6 +7,8 @@ import { getStore } from "@/lib/store";
 
 export const SESSION_COOKIE = "isb_session";
 
+const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+
 export type SessionData = {
   userId: string;
   // "identity" is the display handle used for ownership / audit.
@@ -61,6 +63,8 @@ export function verifySession(token: string | undefined | null): SessionData | n
     const parsed = JSON.parse(fromB64url(payload).toString("utf8")) as SessionData;
     if (typeof parsed !== "object" || !parsed) return null;
     if (typeof parsed.userId !== "string") return null;
+    if (typeof parsed.iat !== "number") return null;
+    if (Date.now() - parsed.iat > MAX_SESSION_AGE_MS) return null;
     return parsed;
   } catch {
     return null;
@@ -82,7 +86,7 @@ export function sessionFromRequest(req: Request): SessionData | null {
 // Build a Set-Cookie header value for the session cookie.
 export function sessionCookieHeader(token: string | null): string {
   if (token === null) {
-    return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+    return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
   }
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=86400`;
 }

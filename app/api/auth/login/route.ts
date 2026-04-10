@@ -4,12 +4,15 @@ import { getStore } from "@/lib/store";
 import {
   checkLoginRateLimit,
   clearLoginRateLimit,
+  hashPassword,
   sessionCookieHeader,
   signSession,
   verifyPassword,
 } from "@/src/auth";
 
 export const dynamic = "force-dynamic";
+
+const DUMMY_HASH = hashPassword("dummy-timing-equalizer-do-not-use");
 
 // POST /api/auth/login
 // Body: { username: string, password: string, identity?: string }
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
   const store = getStore();
   const userId = store.usersByUsername.get(username);
   const user = userId ? store.users.get(userId) : undefined;
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (!user || !verifyPassword(password, user?.passwordHash ?? DUMMY_HASH)) {
     logEvent({ req, route, status: 401, actor: username });
     return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
   }
