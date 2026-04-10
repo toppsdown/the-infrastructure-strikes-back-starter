@@ -146,6 +146,23 @@ const SEED_BANS: string[] = [
   "atk3-th",
   "badge_1775791517_towe",
   "dupt1-th",
+  "th9a1775791604",
+  "th9v1775791604",
+  "dig_a1",
+  "definitely_not_exist_xyz999",
+  "w3_1775791822_tower",
+  "stepprobeA",
+  "stepprobeB",
+  "stepprobeC",
+  "stepprobeD",
+  "stepprobeE",
+  "stepprobeF",
+  "dup_test_user",
+  "phantom_1_1775791894",
+  "phantom_2_1775791894",
+  "phantom_3_1775791895",
+  "phantom_4_1775791895",
+  "phantom_5_1775791895",
 ];
 for (const id of SEED_BANS) {
   addBan(id, "pre-seeded red team account", -1); // permanent
