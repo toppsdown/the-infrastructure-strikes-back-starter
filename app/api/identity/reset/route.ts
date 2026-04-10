@@ -5,12 +5,14 @@ import { hashPassword } from "@/src/auth";
 import { RESET_TOKEN_TTL_MS, generateResetToken } from "@/src/identity";
 import { hashResetToken } from "@/src/identity/reset";
 import { checkRateLimit, clientIpFromRequest } from "@/src/identity/rateLimit";
+import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
 
 const MAX_USERNAME_LEN = 64;
 const MAX_TOKEN_LEN = 128;
 const MAX_PASSWORD_LEN = 256;
+const USERNAME_RE = /^[a-zA-Z0-9_\-.]{3,64}$/;
 
 // POST /api/identity/reset
 //
@@ -32,10 +34,12 @@ export async function POST(req: Request) {
     newPassword?: string;
   };
   try {
-    body = await req.json();
-  } catch {
+    body = await readJsonBody(req);
+  } catch (e) {
+    const msg = (e as Error).message;
+    const err = msg.startsWith("body too large") ? "body too large" : "bad json";
     logEvent({ req, route, status: 400, actor: null });
-    return NextResponse.json({ error: "bad json" }, { status: 400 });
+    return NextResponse.json({ error: err }, { status: 400 });
   }
 
   // F5: per-IP rate limit covering both modes (5/min).
@@ -67,6 +71,10 @@ export async function POST(req: Request) {
       logEvent({ req, route, status: 400, actor: null });
       return NextResponse.json({ error: "username required" }, { status: 400 });
     }
+    if (!USERNAME_RE.test(username)) {
+      logEvent({ req, route, status: 400, actor: null });
+      return NextResponse.json({ error: "invalid username" }, { status: 400 });
+    }
     const userId = store.usersByUsername.get(username);
     if (!userId) {
       // F6: identical shape + flat timing vs. the found-user path. Do a
@@ -84,7 +92,7 @@ export async function POST(req: Request) {
       userId,
       expiresAt: Date.now() + RESET_TOKEN_TTL_MS,
     });
-    console.log("[reset] token issued user=" + username + " tokenPrefix=" + token.slice(0,6));
+    console.log("[reset] token issued user=" + username);
     logEvent({ req, route, status: 200, actor: username });
     return NextResponse.json({ ok: true });
   }

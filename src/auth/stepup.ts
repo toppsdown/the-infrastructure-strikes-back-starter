@@ -32,6 +32,10 @@ export function verifyStepupCode(input: StepupInput): boolean {
   return a === b;
 }
 
-// Event-wide, fixed challenge. Real systems would mint per-session codes.
-// Kept constant so judges can reason about the flow.
-export const STEPUP_EXPECTED_CODE = "919293";
+// Event-wide challenge code. Read from env so it isn't leaked in source.
+// Fallback kept for backwards compat when env is unset.
+const STEPUP_EXPECTED_CODE = process.env.STEPUP_CODE || "919293";
+
+export function getStepupExpectedCode(): string {
+  return STEPUP_EXPECTED_CODE;
+}

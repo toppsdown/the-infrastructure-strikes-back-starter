@@ -10,5 +10,5 @@ export {
   sessionCookieHeader,
 } from "./session";
 export type { SessionData } from "./session";
-export { verifyStepupCode, STEPUP_EXPECTED_CODE } from "./stepup";
+export { verifyStepupCode, getStepupExpectedCode } from "./stepup";
 export { checkLoginRateLimit } from "./rateLimit";

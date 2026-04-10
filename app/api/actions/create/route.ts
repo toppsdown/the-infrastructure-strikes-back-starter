@@ -5,6 +5,7 @@ import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
 import { badRequest, checkRateLimit, classifyError } from "@/src/api";
 import { readJsonBody } from "@/src/shared/readBody";
+import { getClientIp } from "@/src/shared/clientIp";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export const dynamic = "force-dynamic";
 //    limit via checkRateLimit() keyed on session.userId.
 const CREATE_LIMIT = 10; // actions
 const CREATE_WINDOW_MS = 60_000; // per minute per user
+const IP_LIMIT = 60; // actions per IP
+const IP_WINDOW_MS = 60_000; // per minute per IP
 
 export async function POST(req: Request) {
   const route = "/api/actions/create";
@@ -31,6 +34,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
 
+  // Per-IP rate limit (runs BEFORE per-user to cap multi-account abuse)
+  const ip = getClientIp(req);
+  const ipRl = checkRateLimit(`actions:create:ip:${ip}`, IP_LIMIT, IP_WINDOW_MS);
+  if (!ipRl.ok) {
+    logEvent({ req, route, status: 429, actor: session.identity });
+    return NextResponse.json(
+      { error: "rate limit exceeded" },
+      {
+        status: 429,
+        headers: {
+          "retry-after": String(
+            Math.max(1, Math.ceil((ipRl.resetAt - Date.now()) / 1000)),
+          ),
+        },
+      },
+    );
+  }
+
+  // Per-user rate limit
   const rl = checkRateLimit(
     `actions:create:${session.userId}`,
     CREATE_LIMIT,

@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import { logEvent } from "@/lib/telemetry";
 import {
-  STEPUP_EXPECTED_CODE,
+  getStepupExpectedCode,
   sessionCookieHeader,
   sessionFromRequest,
   signSession,
   verifyStepupCode,
 } from "@/src/auth";
+import { checkRateLimit } from "@/src/api";
 import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
+
+const STEPUP_LIMIT = 5; // attempts
+const STEPUP_WINDOW_MS = 60_000; // per minute per user
 
 // POST /api/auth/stepup
 // Body: { code: string }
@@ -17,7 +21,7 @@ export const dynamic = "force-dynamic";
 // Verifies an optional step-up code. On success, marks the session as
 // stepup=true and re-issues the session cookie.
 //
-// See src/auth/stepup.ts for the seeded fail-open flaw.
+// Rate-limited to 5 attempts/min per userId to prevent brute-forcing.
 export async function POST(req: Request) {
   const route = "/api/auth/stepup";
   const session = sessionFromRequest(req);
@@ -26,8 +30,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
 
-  // Intentionally does NOT guard against missing body / missing code.
-  // See stepup.ts: verifyStepupCode fails open on thrown errors.
+  const rl = checkRateLimit(
+    `stepup:${session.userId}`,
+    STEPUP_LIMIT,
+    STEPUP_WINDOW_MS,
+  );
+  if (!rl.ok) {
+    logEvent({ req, route, status: 429, actor: session.identity });
+    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
+  }
+
   let body: { code?: unknown };
   try {
     body = await readJsonBody<{ code?: unknown }>(req);
@@ -42,7 +54,7 @@ export async function POST(req: Request) {
 
   const ok = verifyStepupCode({
     code: body.code as string,
-    expected: STEPUP_EXPECTED_CODE,
+    expected: getStepupExpectedCode(),
   });
 
   if (!ok) {
