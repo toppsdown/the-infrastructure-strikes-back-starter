@@ -12,7 +12,13 @@ export type LogRecord = {
   duration_ms: number;
 };
 
-const MAX_RECORDS = 2000;
+// Sized for Phase 2 volume. Agent-driven traffic can easily push
+// thousands of events per minute, and judges score Live exploit
+// reduction (category 5) by reading this buffer — so rolling legitimate
+// events off the end is a scoring-integrity concern. 50k ≈ 15 MB,
+// well under the serverless memory limit, and roughly an hour of
+// high-volume traffic.
+const MAX_RECORDS = 50000;
 
 declare global {
 
