@@ -80,9 +80,15 @@ export async function POST(req: Request) {
     }
     const userId = store.usersByUsername.get(username);
     if (!userId) {
-      // F6: identical shape + flat timing vs. the found-user path. Do a
-      // dummy token generation so both paths do the same work.
-      void generateResetToken();
+      // F6: identical shape + flat timing vs. the found-user path.
+      // Do ALL the same work so timing is indistinguishable.
+      const dummyToken = generateResetToken();
+      void hashResetToken(dummyToken);
+      // Match the found-user iteration cost (F015 token cleanup scan)
+      for (const [, entry] of store.resetTokens) {
+        void entry.userId;
+      }
+      console.log("[reset] token issued user=" + username);
       logEvent({ req, route, status: 200, actor: username });
       return NextResponse.json({ ok: true });
     }
