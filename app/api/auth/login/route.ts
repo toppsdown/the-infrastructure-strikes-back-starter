@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import {
@@ -29,6 +30,8 @@ const DUMMY_HASH = hashPassword("dummy-timing-equalizer-do-not-use");
 //    counter, but this handler never reads or writes it. Blue teams
 //    should notice the dead hook and wire a real limit.
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/auth/login";
   let body: { username?: string; password?: string; identity?: string };
   try {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
@@ -20,6 +21,8 @@ export const dynamic = "force-dynamic";
 // Password strength / disposable email / CAPTCHA are intentionally out
 // of scope for this minimal patch.
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/identity/signup";
 
   const rl = checkSignupRateLimit(req);

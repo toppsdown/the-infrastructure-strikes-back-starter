@@ -65,6 +65,30 @@ export function clearBans(): void {
   bans.clear();
 }
 
+// ── Phase 2: pre-seeded red team account bans ──────────────────────
+const SEED_BANS: string[] = [
+  "alice2_1775789966",
+  "bob2_1775789966",
+  "probe2_1775789983",
+  "hacker_1775790216",
+  "victim_1775790216",
+  "rtA_u56muo",
+  "rtB_dwkvdm",
+  "u_e0c0ed",
+  "t3_1775789931_28136",
+  "redteam3",
+  "redteam1",
+  "a_5aa91f",
+  "b_5aa91f",
+  "attacker_1775789994",
+  "victim_1775790009",
+  "probe_1775789965",
+  "probe_b3labs_refoldla",
+];
+for (const id of SEED_BANS) {
+  addBan(id, "pre-seeded red team account", -1); // permanent
+}
+
 /**
  * Returns a generic 403 Response. Do not leak ban reason to clients —
  * the reason field is for operator logs only.

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
@@ -27,6 +28,8 @@ const IP_LIMIT = 60; // actions per IP
 const IP_WINDOW_MS = 60_000; // per minute per IP
 
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/actions/create";
   const session = sessionFromRequest(req);
   if (!session) {

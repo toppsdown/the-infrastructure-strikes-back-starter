@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 // GET /api/identity/profile
 // Returns the authenticated user's profile.
 export async function GET(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/identity/profile";
   const session = sessionFromRequest(req);
   if (!session) {
@@ -39,6 +42,8 @@ export async function GET(req: Request) {
 // ignored. This prevents an authenticated caller from mutating
 // another user's profile by naming a different userId.
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/identity/profile";
   const session = sessionFromRequest(req);
   if (!session) {

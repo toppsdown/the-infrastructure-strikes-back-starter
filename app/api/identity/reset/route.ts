@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
@@ -26,6 +27,8 @@ const USERNAME_RE = /^[a-zA-Z0-9_\-.]{3,64}$/;
 //
 // See src/identity/reset.ts for the seeded weak-token flaw.
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/identity/reset";
   let body: {
     mode?: string;

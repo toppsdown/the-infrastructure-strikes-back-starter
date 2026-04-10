@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import {
   getStepupExpectedCode,
@@ -24,6 +25,8 @@ const STEPUP_WINDOW_MS = 60_000; // per minute per user
 //
 // Rate-limited to 5 attempts/min per userId to prevent brute-forcing.
 export async function POST(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/auth/stepup";
   const session = sessionFromRequest(req);
   if (!session) {

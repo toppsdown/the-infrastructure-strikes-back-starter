@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 // GET /api/actions/list
 // Returns actions owned by the authenticated user.
 export async function GET(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/actions/list";
   const session = sessionFromRequest(req);
   if (!session) {

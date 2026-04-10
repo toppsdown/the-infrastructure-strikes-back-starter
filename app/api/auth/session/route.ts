@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { phase2Guard } from "@/src/shared/phase2/guard";
 import { logEvent } from "@/lib/telemetry";
 import { sessionFromRequest } from "@/src/auth";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 // Returns the current session's view of the caller. No secrets — this
 // is a read-only inspection endpoint.
 export async function GET(req: Request) {
+  const blocked = phase2Guard(req);
+  if (blocked) return blocked;
   const route = "/api/auth/session";
   const session = sessionFromRequest(req);
   if (!session) {
