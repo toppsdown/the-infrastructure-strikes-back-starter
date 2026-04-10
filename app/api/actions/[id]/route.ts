@@ -27,7 +27,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  if (!isActionOwner(action, req)) {
+  if (!isActionOwner(action, session)) {
     logEvent({ req, route, status: 403, actor: session.identity });
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }

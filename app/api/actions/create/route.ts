@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { sessionFromRequest } from "@/src/auth";
+import { badRequest, checkRateLimit, classifyError } from "@/src/api";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,17 @@ export const dynamic = "force-dynamic";
 // Body: { title: string, body: string }
 //
 // SEEDED FLAWS:
-//  - "Verbose internal error leakage": the catch block returns the raw
-//    error message, stack, and a dump of the request body for
-//    "debuggability". Attackers can learn internals by forcing errors.
-//  - "No action creation rate limit": no per-user or global limit. A
-//    client can spam create as fast as it can send.
+//  - "Verbose internal error leakage": FIXED. The catch block now
+//    routes through classifyError() — expected ApiErrors become 4xx
+//    with a short sanitized message, unexpected errors become a
+//    generic 500 and the full detail is written only to the server
+//    log. Raw message/stack/request-body dumps no longer reach the
+//    response body.
+//  - "No action creation rate limit": FIXED. Per-session fixed-window
+//    limit via checkRateLimit() keyed on session.userId.
+const CREATE_LIMIT = 10; // actions
+const CREATE_WINDOW_MS = 60_000; // per minute per user
+
 export async function POST(req: Request) {
   const route = "/api/actions/create";
   const session = sessionFromRequest(req);
@@ -23,15 +30,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
 
-  let rawBody: unknown;
-  try {
-    rawBody = await req.json();
-    const body = rawBody as { title?: unknown; body?: unknown };
+  const rl = checkRateLimit(
+    `actions:create:${session.userId}`,
+    CREATE_LIMIT,
+    CREATE_WINDOW_MS,
+  );
+  if (!rl.ok) {
+    logEvent({ req, route, status: 429, actor: session.identity });
+    return NextResponse.json(
+      { error: "rate limit exceeded" },
+      {
+        status: 429,
+        headers: {
+          "retry-after": String(
+            Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          ),
+        },
+      },
+    );
+  }
 
-    const title = String(body.title ?? "").trim();
-    const content = String(body.body ?? "").trim();
-    if (!title) throw new Error("title is required");
-    if (title.length > 200) throw new Error("title too long (max 200)");
+  try {
+    const rawBody = (await req.json().catch(() => {
+      throw badRequest("invalid JSON body");
+    })) as { title?: unknown; body?: unknown };
+
+    const title = String(rawBody.title ?? "").trim();
+    const content = String(rawBody.body ?? "").trim();
+    if (!title) throw badRequest("title is required");
+    if (title.length > 200) throw badRequest("title too long (max 200)");
 
     const id = "act_" + randomBytes(6).toString("hex");
     const action = {
@@ -46,17 +73,8 @@ export async function POST(req: Request) {
     logEvent({ req, route, status: 201, actor: session.identity });
     return NextResponse.json(action, { status: 201 });
   } catch (e) {
-    const err = e as Error;
-    logEvent({ req, route, status: 500, actor: session.identity });
-    // SEEDED FLAW: verbose internal error leakage.
-    return NextResponse.json(
-      {
-        error: "internal",
-        message: err.message,
-        stack: err.stack,
-        received: rawBody,
-      },
-      { status: 500 },
-    );
+    const { status, body } = classifyError(e, route);
+    logEvent({ req, route, status, actor: session.identity });
+    return NextResponse.json(body, { status });
   }
 }
