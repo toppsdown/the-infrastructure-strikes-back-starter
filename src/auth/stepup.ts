@@ -33,9 +33,11 @@ export function verifyStepupCode(input: StepupInput): boolean {
 }
 
 // Event-wide challenge code. Read from env so it isn't leaked in source.
-// Fallback kept for backwards compat when env is unset.
-const STEPUP_EXPECTED_CODE = process.env.STEPUP_CODE || "919293";
-
+// Fail-closed: refuse to start if env var is missing or too short.
 export function getStepupExpectedCode(): string {
-  return STEPUP_EXPECTED_CODE;
+  const code = process.env.STEPUP_CODE;
+  if (!code || code.length < 4) {
+    throw new Error("STEPUP_CODE required (>=4 chars)");
+  }
+  return code;
 }

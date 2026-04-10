@@ -8,6 +8,7 @@ import {
   verifyStepupCode,
 } from "@/src/auth";
 import { checkRateLimit } from "@/src/api";
+import { getClientIp } from "@/src/shared/clientIp";
 import { readJsonBody } from "@/src/shared/readBody";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,17 @@ export async function POST(req: Request) {
   if (!session) {
     logEvent({ req, route, status: 401, actor: null });
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  // F024: per-IP backstop — 10/min regardless of userId.
+  const ipRl = checkRateLimit(
+    `stepup-ip:${getClientIp(req)}`,
+    10,
+    60_000,
+  );
+  if (!ipRl.ok) {
+    logEvent({ req, route, status: 429, actor: session.identity });
+    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
   }
 
   const rl = checkRateLimit(

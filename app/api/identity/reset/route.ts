@@ -85,6 +85,11 @@ export async function POST(req: Request) {
     }
     const token = generateResetToken();
     const tokenHash = hashResetToken(token);
+    // F015: invalidate any prior reset tokens for this user before issuing
+    // a new one, preventing accumulation of multiple valid tokens.
+    for (const [key, entry] of store.resetTokens) {
+      if (entry.userId === userId) store.resetTokens.delete(key);
+    }
     // F3: keyed by hash; the `token` field holds the hash too so plaintext
     // is never persisted anywhere in the store.
     store.resetTokens.set(tokenHash, {
