@@ -42,6 +42,11 @@ export function logEvent(input: LogInput): void {
   const reqId = input.req.headers.get("x-request-id") || "req_unknown";
   const startHeader = input.req.headers.get("x-request-start");
   const startedAt = input.startedAt ?? (startHeader ? Number(startHeader) : Date.now());
+  const rawActor = input.actor ?? null;
+  const actor =
+    typeof rawActor === "string" && rawActor.length > 128
+      ? rawActor.slice(0, 128)
+      : rawActor;
   const record: LogRecord = {
     timestamp: new Date().toISOString(),
     request_id: reqId,
@@ -49,7 +54,7 @@ export function logEvent(input: LogInput): void {
     route: input.route,
     method: input.req.method,
     status: input.status,
-    actor: input.actor ?? null,
+    actor,
     duration_ms: Math.max(0, Date.now() - startedAt),
   };
   const buf = buffer();

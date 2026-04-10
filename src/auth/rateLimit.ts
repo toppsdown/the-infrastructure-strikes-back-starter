@@ -6,6 +6,8 @@
 // from a single source is still capped. No new dependencies: just a
 // module-level Map with timestamp-based expiry.
 
+import { getClientIp } from "@/src/shared/clientIp";
+
 const WINDOW_MS = 60_000; // 1 minute window
 const MAX_ATTEMPTS = 10; // per window per (ip, username)
 
@@ -13,9 +15,7 @@ type Bucket = { count: number; firstAt: number };
 const buckets = new Map<string, Bucket>();
 
 function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip") || "unknown";
+  return getClientIp(req);
 }
 
 export type RateLimitResult = { allowed: boolean; retryAfterMs: number };

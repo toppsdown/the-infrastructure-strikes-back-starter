@@ -46,19 +46,12 @@ export function checkRateLimit(
   };
 }
 
-// Best-effort client IP extraction from a Request. Falls back to
-// "unknown" so the limiter still functions (shared bucket) rather than
-// silently disabling.
+import { getClientIp } from "@/src/shared/clientIp";
+
+// Trusted client IP extraction. Delegates to the shared Vercel-aware
+// helper which ignores attacker-controllable x-forwarded-for.
 export function clientIpFromRequest(req: Request): string {
-  const h = req.headers;
-  const xff = h.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return (
-    h.get("x-real-ip") ||
-    h.get("cf-connecting-ip") ||
-    h.get("x-vercel-forwarded-for") ||
-    "unknown"
-  );
+  return getClientIp(req);
 }
 
 // Signup-specific convenience wrapper. Generous limit (30/min/IP) per

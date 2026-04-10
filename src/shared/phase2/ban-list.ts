@@ -6,9 +6,10 @@
  *
  * Intended wiring (Phase 2):
  *   import { isBanned, banListHandler } from "@/shared/phase2/ban-list";
- *   const ip = req.headers.get("x-forwarded-for") ?? "";
- *   if (isBanned(ip)) return banListHandler();
+ *   if (isBannedReq(req)) return banListHandler();
  */
+
+import { extractIp } from "./fingerprint";
 
 export interface BanEntry {
   ip: string;
@@ -37,6 +38,10 @@ export function isBanned(ip: string): boolean {
     return false;
   }
   return true;
+}
+
+export function isBannedReq(req: Request): boolean {
+  return isBanned(extractIp(req));
 }
 
 export function removeBan(ip: string): boolean {

@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     const content = String(rawBody.body ?? "").trim();
     if (!title) throw badRequest("title is required");
     if (title.length > 200) throw badRequest("title too long (max 200)");
+    if (content.length > 4096) throw badRequest("body too long (max 4096)");
 
     const id = "act_" + randomBytes(6).toString("hex");
     const action = {

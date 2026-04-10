@@ -65,9 +65,9 @@ const BAD_HEADER_SIGNALS: Array<{ name: string; re: RegExp; reason: string }> = 
   { name: "x-attack", re: /./, reason: "x-attack header present" },
 ];
 
-function extractIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+export function extractIp(req: Request): string {
+  const xvff = req.headers.get("x-vercel-forwarded-for");
+  if (xvff) return xvff.split(",")[0].trim();
   return req.headers.get("x-real-ip") ?? "unknown";
 }
 

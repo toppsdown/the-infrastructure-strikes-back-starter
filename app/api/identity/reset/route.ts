@@ -3,8 +3,13 @@ import { logEvent } from "@/lib/telemetry";
 import { getStore } from "@/lib/store";
 import { hashPassword } from "@/src/auth";
 import { RESET_TOKEN_TTL_MS, generateResetToken } from "@/src/identity";
+import { checkRateLimit, clientIpFromRequest } from "@/src/identity/rateLimit";
 
 export const dynamic = "force-dynamic";
+
+const MAX_USERNAME_LEN = 64;
+const MAX_TOKEN_LEN = 128;
+const MAX_PASSWORD_LEN = 256;
 
 // POST /api/identity/reset
 //
@@ -32,6 +37,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
 
+  // F5: per-IP rate limit covering both modes (5/min).
+  const rl = checkRateLimit(
+    `reset:${clientIpFromRequest(req)}`,
+    5,
+    60 * 1000,
+  );
+  if (!rl.allowed) {
+    logEvent({ req, route, status: 429, actor: null });
+    return NextResponse.json({ error: "rate limited" }, { status: 429 });
+  }
+
+  // F4: bound input lengths.
+  if (
+    (typeof body.username === "string" && body.username.length > MAX_USERNAME_LEN) ||
+    (typeof body.token === "string" && body.token.length > MAX_TOKEN_LEN) ||
+    (typeof body.newPassword === "string" && body.newPassword.length > MAX_PASSWORD_LEN)
+  ) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "input too long" }, { status: 400 });
+  }
+
   const store = getStore();
 
   if (body.mode === "request") {
@@ -42,10 +68,11 @@ export async function POST(req: Request) {
     }
     const userId = store.usersByUsername.get(username);
     if (!userId) {
-      // Respond success regardless to avoid trivial username enumeration
-      // via this endpoint. Still weak overall — token gen is predictable.
+      // F6: identical shape + flat timing vs. the found-user path. Do a
+      // dummy token generation so both paths do the same work.
+      void generateResetToken();
       logEvent({ req, route, status: 200, actor: username });
-      return NextResponse.json({ ok: true, token: null });
+      return NextResponse.json({ ok: true });
     }
     const token = generateResetToken();
     store.resetTokens.set(token, {
@@ -53,8 +80,11 @@ export async function POST(req: Request) {
       userId,
       expiresAt: Date.now() + RESET_TOKEN_TTL_MS,
     });
+    // F1: never return the token to the caller. Log server-side so the
+    // defender can still retrieve it from logs if needed.
+    console.log(`[reset] token issued for user=${username} token=${token}`);
     logEvent({ req, route, status: 200, actor: username });
-    return NextResponse.json({ ok: true, token });
+    return NextResponse.json({ ok: true });
   }
 
   if (body.mode === "confirm") {

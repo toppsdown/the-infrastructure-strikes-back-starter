@@ -41,6 +41,14 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  if (username.length > 64) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "username too long" }, { status: 400 });
+  }
+  if (password.length > 256) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "password too long" }, { status: 400 });
+  }
 
   // SEEDED FLAW (fixed): no login rate limit. Check the in-memory
   // (ip, username) bucket before doing any credential work.

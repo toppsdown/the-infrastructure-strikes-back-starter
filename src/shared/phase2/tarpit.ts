@@ -31,6 +31,7 @@ export function tarpit(ms: number): Promise<void> {
 /**
  * Wraps an async handler so its response is delayed by `ms` ms.
  */
-export function withTarpit<T>(ms: number, fn: () => Promise<T>): Promise<T> {
-  return Promise.all([fn(), tarpit(ms)]).then(([v]) => v);
+export async function withTarpit<T>(ms: number, fn: () => Promise<T>): Promise<T> {
+  await tarpit(ms);
+  return await fn();
 }

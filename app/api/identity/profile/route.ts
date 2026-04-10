@@ -64,9 +64,17 @@ export async function POST(req: Request) {
   }
 
   if (typeof body.displayName === "string") {
+    if (body.displayName.length > 128) {
+      logEvent({ req, route, status: 400, actor: session.identity });
+      return NextResponse.json({ error: "displayName too long" }, { status: 400 });
+    }
     user.displayName = body.displayName.trim() || user.displayName;
   }
   if (typeof body.email === "string") {
+    if (body.email.length > 256) {
+      logEvent({ req, route, status: 400, actor: session.identity });
+      return NextResponse.json({ error: "email too long" }, { status: 400 });
+    }
     user.email = body.email.trim();
   }
 

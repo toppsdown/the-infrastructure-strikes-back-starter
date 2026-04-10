@@ -57,6 +57,22 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  if (username.length > 64) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "username too long" }, { status: 400 });
+  }
+  if (password.length > 256) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "password too long" }, { status: 400 });
+  }
+  if ((body.email || "").length > 256) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "email too long" }, { status: 400 });
+  }
+  if ((body.displayName || "").length > 128) {
+    logEvent({ req, route, status: 400, actor: null });
+    return NextResponse.json({ error: "displayName too long" }, { status: 400 });
+  }
 
   const store = getStore();
   if (store.usersByUsername.has(username)) {
