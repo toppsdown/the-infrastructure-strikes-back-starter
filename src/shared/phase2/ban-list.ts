@@ -168,6 +168,21 @@ const SEED_BANS: string[] = [
   "probe_1775792387",
   "idor_xss_1775792399",
   "target_1775792399",
+  "ghost_872f5a",
+  "probea_872f5a",
+  "b3probe_4969000",
+  "probeb_872f5a",
+  "seq1775792568161679000198",
+  "race1775792569919012000772",
+  "ghost_169f60",
+  "probea_169f60",
+  "probeb_169f60",
+  "idinject_1775792592_tower",
+  "probeb_2cd843",
+  "rl_didvznup",
+  "fshxxecx",
+  "frl7tq58",
+  "rl_16ci31m5",
 ];
 for (const id of SEED_BANS) {
   addBan(id, "pre-seeded red team account", -1); // permanent
